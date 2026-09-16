@@ -8,14 +8,25 @@ from app.utils.filenames import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+COOKIES_PATH = os.path.join(BASE_DIR, "cookies.txt")
+
 async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
     """Fetches metadata using yt-dlp without downloading."""
-    process = await asyncio.create_subprocess_exec(
+    cmd = [
         "yt-dlp",
         "--dump-json",
         "--no-playlist",
-        "--extractor-args", "youtube:player_client=default",
-        url,
+        "--extractor-args", "youtube:player_client=ios"
+    ]
+    
+    if os.path.exists(COOKIES_PATH):
+        cmd.extend(["--cookies", COOKIES_PATH])
+        
+    cmd.append(url)
+    
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
@@ -51,12 +62,16 @@ async def download_and_convert(job: Job, temp_dir: str):
         "--audio-format", "mp3",
         "--audio-quality", "0",
         "--no-playlist",
-        "--extractor-args", "youtube:player_client=default",
+        "--extractor-args", "youtube:player_client=ios",
         "--newline",
         "--progress-template", f"download:{progress_template}",
-        "-o", outtmpl,
-        job.url
+        "-o", outtmpl
     ]
+    
+    if os.path.exists(COOKIES_PATH):
+        cmd.extend(["--cookies", COOKIES_PATH])
+        
+    cmd.append(job.url)
     
     process = await asyncio.create_subprocess_exec(
         *cmd,
