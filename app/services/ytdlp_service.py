@@ -14,6 +14,7 @@ async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
         "yt-dlp",
         "--dump-json",
         "--no-playlist",
+        "--extractor-args", "youtube:player_client=default",
         url,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
@@ -50,6 +51,7 @@ async def download_and_convert(job: Job, temp_dir: str):
         "--audio-format", "mp3",
         "--audio-quality", "0",
         "--no-playlist",
+        "--extractor-args", "youtube:player_client=default",
         "--newline",
         "--progress-template", f"download:{progress_template}",
         "-o", outtmpl,
