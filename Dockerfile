@@ -4,9 +4,9 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=10000
 ENV TEMP_DIR=/tmp/ytmp3
 
-# Install FFmpeg and clean up apt cache
+# Install FFmpeg, nodejs and clean up apt cache
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl && \
+    apt-get install -y ffmpeg curl nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
