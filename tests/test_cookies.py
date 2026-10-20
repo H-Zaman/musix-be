@@ -10,12 +10,16 @@ def _use(monkeypatch, tmp_path, content):
     if content is not None:
         path.write_text(content)
     monkeypatch.setattr(ytdlp_service, "COOKIES_PATH", str(path))
+    monkeypatch.setattr(ytdlp_service, "COOKIES_RUNTIME_PATH", str(tmp_path / "runtime.txt"))
     return str(path)
 
 
-def test_valid_cookie_file_is_passed(monkeypatch, tmp_path):
+def test_valid_cookie_file_is_passed_as_writable_copy(monkeypatch, tmp_path):
     path = _use(monkeypatch, tmp_path, VALID)
-    assert ytdlp_service._cookie_args() == ["--cookies", path]
+    runtime = str(tmp_path / "runtime.txt")
+    assert ytdlp_service._cookie_args() == ["--cookies", runtime]
+    assert open(runtime).read() == VALID
+    assert runtime != path  # the (possibly read-only) source is never handed to yt-dlp
 
 
 def test_malformed_cookie_file_is_ignored(monkeypatch, tmp_path):

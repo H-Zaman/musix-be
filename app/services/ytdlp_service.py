@@ -2,6 +2,9 @@ import asyncio
 import json
 import logging
 import os
+import shutil
+import subprocess
+import tempfile
 from typing import Dict, Any, Tuple
 from app.models import Job, JobState
 from app.utils.filenames import sanitize_filename
@@ -12,6 +15,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 # Cookies are optional and secret: point YTDLP_COOKIES_FILE at a mounted
 # secret file (e.g. Render's /etc/secrets/cookies.txt); never commit them.
 COOKIES_PATH = os.environ.get("YTDLP_COOKIES_FILE", os.path.join(BASE_DIR, "cookies.txt"))
+
+COOKIES_RUNTIME_PATH = os.path.join(tempfile.gettempdir(), "ytdlp-cookies.txt")
+
+def log_toolchain() -> None:
+    """Log which JS runtime / ffmpeg / yt-dlp the container really has, so a
+    deploy can be diagnosed from its logs."""
+    for tool in ("yt-dlp", "deno", "node", "ffmpeg"):
+        path = shutil.which(tool)
+        if not path:
+            logger.warning("toolchain: %s NOT FOUND", tool)
+            continue
+        out = subprocess.run([path, "--version"], capture_output=True, text=True).stdout
+        logger.info("toolchain: %s %s (%s)", tool, out.strip().splitlines()[0] if out.strip() else "?", path)
 
 def _cookie_args() -> list[str]:
     """Pass --cookies only for a valid Netscape file; a malformed one makes
@@ -26,7 +42,11 @@ def _cookie_args() -> list[str]:
     if not entries or any(len(e.split("\t")) != 7 for e in entries):
         logger.warning("Ignoring malformed cookies file: %s", COOKIES_PATH)
         return []
-    return ["--cookies", COOKIES_PATH]
+    # Secret mounts are read-only but yt-dlp rewrites its cookie jar on exit,
+    # so work on a writable copy. Copied once; later runs keep rotated tokens.
+    if not os.path.exists(COOKIES_RUNTIME_PATH):
+        shutil.copyfile(COOKIES_PATH, COOKIES_RUNTIME_PATH)
+    return ["--cookies", COOKIES_RUNTIME_PATH]
 
 async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
     """Fetches metadata using yt-dlp without downloading."""

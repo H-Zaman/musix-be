@@ -10,6 +10,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# yt-dlp needs a JS runtime for YouTube; it enables deno by default, and the
+# distro nodejs package is often older than yt-dlp supports.
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
 # Set working directory
 WORKDIR /usr/src/app
 

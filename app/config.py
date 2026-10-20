@@ -5,6 +5,8 @@ class Config:
     TEMP_DIR = os.environ.get("TEMP_DIR", "/tmp/ytmp3")
     MAX_CONCURRENT_DOWNLOADS = int(os.environ.get("MAX_CONCURRENT_DOWNLOADS", 1))
     CLEANUP_AGE_SECONDS = int(os.environ.get("CLEANUP_AGE_SECONDS", 1800))  # 30 minutes
+    # When set, every /api request must send a matching X-API-Key header.
+    API_KEY = os.environ.get("API_KEY", "")
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
 
 config = Config()
