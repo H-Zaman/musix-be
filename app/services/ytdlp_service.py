@@ -34,6 +34,8 @@ async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
         "yt-dlp",
         "--dump-json",
         "--no-playlist",
+        # yt-dlp only enables deno by default; the image installs nodejs.
+        "--js-runtimes", "node",
     ]
     
     cmd.extend(_cookie_args())
@@ -77,6 +79,8 @@ async def download_and_convert(job: Job, temp_dir: str):
         "--audio-format", "mp3",
         "--audio-quality", "0",
         "--no-playlist",
+        # yt-dlp only enables deno by default; the image installs nodejs.
+        "--js-runtimes", "node",
         "--newline",
         "--progress-template", f"download:{progress_template}",
         "-o", outtmpl
