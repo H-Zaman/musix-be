@@ -9,7 +9,24 @@ from app.utils.filenames import sanitize_filename
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-COOKIES_PATH = os.path.join(BASE_DIR, "cookies.txt")
+# Cookies are optional and secret: point YTDLP_COOKIES_FILE at a mounted
+# secret file (e.g. Render's /etc/secrets/cookies.txt); never commit them.
+COOKIES_PATH = os.environ.get("YTDLP_COOKIES_FILE", os.path.join(BASE_DIR, "cookies.txt"))
+
+def _cookie_args() -> list[str]:
+    """Pass --cookies only for a valid Netscape file; a malformed one makes
+    yt-dlp skip every entry and just adds noise."""
+    if not os.path.exists(COOKIES_PATH):
+        return []
+    with open(COOKIES_PATH, encoding="utf-8", errors="ignore") as f:
+        entries = [
+            line.rstrip("\n") for line in f
+            if line.strip() and (not line.startswith("#") or line.startswith("#HttpOnly_"))
+        ]
+    if not entries or any(len(e.split("\t")) != 7 for e in entries):
+        logger.warning("Ignoring malformed cookies file: %s", COOKIES_PATH)
+        return []
+    return ["--cookies", COOKIES_PATH]
 
 async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
     """Fetches metadata using yt-dlp without downloading."""
@@ -17,11 +34,9 @@ async def fetch_metadata(url: str) -> Tuple[Dict[str, Any], str]:
         "yt-dlp",
         "--dump-json",
         "--no-playlist",
-        "--extractor-args", "youtube:player_client=ios"
     ]
     
-    if os.path.exists(COOKIES_PATH):
-        cmd.extend(["--cookies", COOKIES_PATH])
+    cmd.extend(_cookie_args())
         
     cmd.append(url)
     
@@ -62,14 +77,12 @@ async def download_and_convert(job: Job, temp_dir: str):
         "--audio-format", "mp3",
         "--audio-quality", "0",
         "--no-playlist",
-        "--extractor-args", "youtube:player_client=ios",
         "--newline",
         "--progress-template", f"download:{progress_template}",
         "-o", outtmpl
     ]
     
-    if os.path.exists(COOKIES_PATH):
-        cmd.extend(["--cookies", COOKIES_PATH])
+    cmd.extend(_cookie_args())
         
     cmd.append(job.url)
     
